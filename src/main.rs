@@ -46,7 +46,7 @@ fn main() {
 			}
 
 			let mut dirs = commands.clone();
-			dirs.swap_remove(0);
+			dirs.remove(0);
 			let dirs: Vec<&str> = dirs[0].split("/").collect(); // 0 because previous 0 was removed
 
 			for dir in dirs.iter() {
@@ -57,14 +57,23 @@ fn main() {
 				} else {
 					current_path.push(dir);
 				}
-				
-				let current_path_str = current_path.to_string_lossy();
-				if !current_path.is_dir() && current_path_str != "" {
+
+				// Check if entered path is not a directory
+				if !current_path.is_dir() && current_path.to_string_lossy() != "" {
 					println!("error: '{}' is not a directory", dir);
-					current_path.pop();
+					current_path.pop(); // Don't remove this
+					break;
 				}
 			}
 		} else if commands[0] == "ls" {
+			// Check if entered path is not a directory
+			// This most likely won't happen, but just in case
+			if !current_path.is_dir() && current_path.to_string_lossy() != "" {
+				println!("error: '{}' is not a directory", current_path.display());
+				current_path.pop(); // Goes out of bad directory
+				continue;
+			}
+
 			let mut entries: Vec<String> = Vec::new();
 			
 			for entry in current_path.read_dir().expect("error: Could not read directory") {
@@ -76,7 +85,7 @@ fn main() {
 
 					entries.push(format!("{}{}", entry.path().strip_prefix(format!("{}", current_path.display())).unwrap().display(), placeholder));
 				} else {
-					println!("error: Could not read file entry");
+					println!("error: Could not read a directory or file entry");
 					continue;
 				}
 			}
@@ -115,11 +124,17 @@ fn main() {
 			}
 
 			let dir = commands[1];
+			let dir = PathBuf::from(format!("{}/{}", current_path.display(), dir));
 
-			match fs::remove_dir(format!("{}/{}", current_path.display(), dir)) {
-				Ok(_) => println!("Successfully removed '{}' directory", dir),
+			if !(dir.is_dir()) {
+				println!("error: '{}' is not a directory", commands[1]);
+				continue;
+			}
+
+			match fs::remove_dir(dir.clone()) {
+				Ok(_) => println!("Successfully removed '{}' directory", commands[1]),
 				Err(error) => {
-					println!("error: Could not remove '{}' directory", dir);
+					println!("error: Could not remove '{}' directory", commands[1]);
 					println!("error: {}", error);
 				},
 			}
@@ -130,6 +145,14 @@ fn main() {
 			}
 
 			let file = PathBuf::from(format!("{}/{}", current_path.display(), commands[1]));
+
+			if file.is_dir() {
+				println!("error: Can not use rm to remove directories, use rmdir instead");
+				continue;
+			} else if !file.is_file() {
+				println!("error: '{}' is not a file", commands[1]);
+				continue;
+			}
 
 			match fs::remove_file(file) {
 				Ok(_) => println!("Successfully removed '{}' file", commands[1]),
@@ -146,13 +169,13 @@ fn main() {
 			
 			print!("Doing this will remove the directory recursively, meaning it will delete all contents.\nAre you sure you want to do this? (Type 'yes' to continue, type anything else to stop.)\n>> ");
 		
-			let mut warning = String::new();
-
 			// Put all this inside of an input function
 			if let Err(_) = io::stdout().flush() {
 				println!("error: Could not flush stdout");
 				continue;
 			}
+
+			let mut warning = String::new();
 
 			if let Err(_) = io::stdin().read_line(&mut warning) {
 				println!("error: Could not read input");
@@ -162,8 +185,12 @@ fn main() {
 			let warning = warning.trim();
 
 			if warning == "yes".to_string() {
-
 				let dir = PathBuf::from(format!("{}/{}", current_path.display(), commands[1]));
+
+				if !dir.is_dir() {
+					println!("error: '{}' is not a directory", commands[1]);
+					continue;
+				}
 
 				match fs::remove_dir_all(dir) {
 					Ok(_) => println!("Successfully removed '{}' directory and it's contents", commands[1]),
@@ -185,10 +212,10 @@ fn main() {
 			let to_file = PathBuf::from(format!("{}/{}", current_path.display(), commands[2]));
 
 			if !from_file.is_file() {
-				println!("error: '{}' is not a file", from_file.display());
+				println!("error: first argument '{}' is not a file", commands[1]);
 				continue;
 			} else if !to_file.is_file() {
-				println!("error: '{}' is not a file", to_file.display());
+				println!("error: second argument '{}' is not a file", commands[2]);
 				continue;
 			}
 
@@ -208,6 +235,14 @@ fn main() {
 			let from_file = PathBuf::from(format!("{}/{}", current_path.display(), commands[1]));
 			let to_file = PathBuf::from(format!("{}/{}", current_path.display(), commands[2]));
 
+			if !from_file.is_file() {
+				println!("error: first argument '{}' is not a file", commands[1]);
+				continue;
+			} else if to_file.is_file() {
+				println!("error: second argument '{}' file already exists", commands[2]);
+				continue;
+			}
+
 			match fs::copy(from_file, to_file) {
 				Ok(_) => println!("Successfully copied file from '{}' to '{}'", commands[1], commands[2]),
 				Err(error) => {
@@ -223,6 +258,14 @@ fn main() {
 
 			let file = PathBuf::from(format!("{}/{}", current_path.display(), commands[1]));
 
+			if file.is_dir() {
+				println!("error: Can not read from a directory");
+				continue;
+			} else if !file.is_file() {
+				println!("error: '{}' is not a file", commands[1]);
+				continue;
+			}
+
 			match fs::read_to_string(file) {
 				Ok(contents) => println!("{}", contents),
 				Err(error) => {
@@ -237,6 +280,14 @@ fn main() {
 			}
 
 			let file = PathBuf::from(format!("{}/{}", current_path.display(), commands[1]));
+
+			if file.is_dir() {
+				println!("error: Can not make a new directory with the new command. Use mkdir instead");
+				continue;
+			} else if file.is_file() { // If file already exists
+				println!("error: '{}' file already exists", commands[1]);
+				continue;
+			}
 
 			if commands.len() == 2 { // Create an empty file
 				match File::create(file) {
