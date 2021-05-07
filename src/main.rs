@@ -4,6 +4,14 @@ use std::fs::{self, File};
 
 const PREFIX: &str = "./"; // Change to "/" if you want to start from real root directory
 
+const SYSTEM_FILES: &str = ".gsys"; // GlassOS system files, like passwords, etc
+const USER_HIDDEN_FILES: &str = ".hd"; // User made hidden files
+
+const HIDDEN_FILE_TYPES: &[&'static str; 2] = &[ // Change number when adding more hidden file extensions
+	SYSTEM_FILES,
+	USER_HIDDEN_FILES,
+];
+
 // TODO: When implemented into GlassOS, probably use a crate so I can parse arguments.
 
 fn main() {
@@ -41,7 +49,22 @@ fn main() {
 			continue;
 		}
 
-		if commands[0] == "cd" {
+		if commands[0] == "help" {
+			println!("cd DIR\t\t\t\tChange directory
+ls\t\t\t\tList contents of current directory
+clear\t\t\t\tClears screen
+quit\t\t\t\tQuits the fs navigator
+pwd\t\t\t\tPrints the working directory
+mkdir DIR\t\t\tCreates a new directory
+rmdir DIR\t\t\tRemoves an empty directory
+rm FILE\t\t\t\tRemoves a file
+rmall DIR\t\t\tRemoves a directory and it's contents recursively
+mv FROM_FILE TO_FILE\t\tRenames a file
+cp FILE NEW_FILE\t\tCopies a file
+cat FILE\t\t\tDisplays the contents of a file
+new FILE\t\t\tCreates an empty file
+new FILE CONTENTS...\t\tCreates a file with the arguments as the contents");
+		} else if commands[0] == "cd" {
 			if commands.len() < 2 {
 				println!("error: This command requires two arguments");
 				continue;
@@ -51,10 +74,10 @@ fn main() {
 			dirs.remove(0);
 			let dirs: Vec<&str> = dirs[0].split("/").collect(); // 0 because previous 0 was removed
 
-			for dir in dirs.iter() {
-				if *dir == "." {
+			for dir in dirs {
+				if dir == "." {
 					continue;
-				} else if *dir == ".." {
+				} else if dir == ".." {
 					current_path.pop();
 				} else {
 					current_path.push(dir);
@@ -85,7 +108,18 @@ fn main() {
 						placeholder = String::from("/");
 					}
 
-					entries.push(format!("{}{}", entry.path().strip_prefix(format!("{}", current_path.display())).unwrap().display(), placeholder));
+					let mut hidden = false;
+					
+					// Check if a file is hidden
+					for file_type in HIDDEN_FILE_TYPES {
+						if entry.file_name().to_string_lossy().ends_with(*file_type) {
+							hidden = true;
+						}
+					}
+
+					if !hidden {
+						entries.push(format!("{}{}", entry.path().strip_prefix(format!("{}", current_path.display())).unwrap().display(), placeholder));
+					}
 				} else {
 					println!("error: Could not read a directory or file entry");
 					continue;
@@ -265,6 +299,9 @@ fn main() {
 				continue;
 			} else if !file.is_file() {
 				println!("error: '{}' is not a file", commands[1]);
+				continue;
+			} else if file.to_string_lossy().ends_with(SYSTEM_FILES) {
+				println!("error: Can not read system file '{}'", commands[1]); // Maybe make it so admins can do that
 				continue;
 			}
 
