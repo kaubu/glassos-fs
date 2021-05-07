@@ -2,9 +2,11 @@ use std::path::{PathBuf};
 use std::io::{self, Write};
 use std::fs::{self, File};
 
+const PREFIX: &str = "./"; // Change to "/" if you want to start from real root directory
+
 fn main() {
 	let mut current_path = PathBuf::new();
-	current_path.push("./");
+	current_path.push(PREFIX);
 
 	loop {
 		let mut input = String::new();
@@ -13,8 +15,11 @@ fn main() {
 			println!("error: Can not go above root directory");
 			current_path = PathBuf::from("./");
 			continue;
+		} else if current_path == PathBuf::from("/") {
+			print!("{}> ", current_path.display());
+		} else {
+			print!("/{}> ", current_path.strip_prefix(PREFIX).unwrap().display());
 		}
-		print!("/{}> ", current_path.strip_prefix("./").unwrap().display());
 		
 		if let Err(_) = io::stdout().flush() {
 			println!("error: Could not flush stdout");
@@ -87,7 +92,7 @@ fn main() {
 		} else if commands[0] == "quit" || commands[0] == "exit" {
 			break;
 		} else if commands[0] == "pwd" {
-			println!("/{}", current_path.strip_prefix("./").unwrap().display());
+			println!("/{}", current_path.strip_prefix(PREFIX).unwrap().display());
 		} else if commands[0] == "mkdir" {
 			if commands.len() < 2 {
 				println!("error: This command requires two arguments");
@@ -178,6 +183,14 @@ fn main() {
 
 			let from_file = PathBuf::from(format!("{}/{}", current_path.display(), commands[1]));
 			let to_file = PathBuf::from(format!("{}/{}", current_path.display(), commands[2]));
+
+			if !from_file.is_file() {
+				println!("error: '{}' is not a file", from_file.display());
+				continue;
+			} else if !to_file.is_file() {
+				println!("error: '{}' is not a file", to_file.display());
+				continue;
+			}
 
 			match fs::rename(from_file, to_file) {
 				Ok(_) => println!("Successfully renamed file from '{}' to '{}'", commands[1], commands[2]),
