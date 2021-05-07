@@ -4,6 +4,8 @@ use std::fs::{self, File};
 
 const PREFIX: &str = "./"; // Change to "/" if you want to start from real root directory
 
+// TODO: When implemented into GlassOS, probably use a crate so I can parse arguments.
+
 fn main() {
 	let mut current_path = PathBuf::new();
 	current_path.push(PREFIX);
