@@ -188,6 +188,9 @@ new FILE CONTENTS...\t\tCreates a file with the arguments as the contents");
 			} else if !file.is_file() {
 				println!("error: '{}' is not a file", commands[1]);
 				continue;
+			} else if file.to_string_lossy().ends_with(SYSTEM_FILES) {
+				println!("error: Can not move system file '{}'", commands[1]);
+				continue;
 			}
 
 			match fs::remove_file(file) {
@@ -250,8 +253,11 @@ new FILE CONTENTS...\t\tCreates a file with the arguments as the contents");
 			if !from_file.is_file() {
 				println!("error: first argument '{}' is not a file", commands[1]);
 				continue;
-			} else if !to_file.is_file() {
-				println!("error: second argument '{}' is not a file", commands[2]);
+			} else if to_file.is_file() {
+				println!("error: second argument '{}' file already exists", commands[2]);
+				continue;
+			} else if commands[1].ends_with(SYSTEM_FILES) {
+				println!("error: Can not move system file '{}'", commands[1]);
 				continue;
 			}
 
@@ -276,6 +282,9 @@ new FILE CONTENTS...\t\tCreates a file with the arguments as the contents");
 				continue;
 			} else if to_file.is_file() {
 				println!("error: second argument '{}' file already exists", commands[2]);
+				continue;
+			} else if from_file.to_string_lossy().ends_with(SYSTEM_FILES) {
+				println!("error: Can not copy system file '{}'", commands[1]);
 				continue;
 			}
 
