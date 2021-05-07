@@ -1,7 +1,7 @@
-# glassos-fs
+# GlassOS-FS
 The GlassOS file system navigator.
 
-# Commands (from `help` command)
+## Commands (from `help` command)
 ```
 cd DIR                          Change directory
 ls                              List contents of current directory
