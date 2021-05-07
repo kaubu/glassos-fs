@@ -356,6 +356,8 @@ new FILE CONTENTS...\t\tCreates a file with the arguments as the contents");
 					},
 				}
 			}
+		} else {
+			println!("'{}' is not a command. Type 'help' to see a list of commands.", commands[0]);
 		}
 	}
 }
